@@ -1,84 +1,54 @@
-#Client
-
 import socket
-import sys
-import time
-import re
 
-class Client:
-    def __init__(self, server_ip, server_port):
-        self.server_ip = server_ip
-        self.server_port = server_port
-        self.socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+def start_client():
+    host = '127.0.0.1'
+    port = 5555
 
-    def start(self):
-        self.socket.connect((self.server_ip, self.server_port))
-        print('client start 0')
-        data = self.socket.recv(1024).decode()
-        print(data)
-        print('client start')
-        if data.startswith("START AUCTION"):
-            print('b4 start auction')
-            self.start_auction()
-            print('after start auction')
-        elif data.startswith("BIDDING START"):
-            #if data.startswith("BIDDING START"):
-            self.bid()
+    # Create a socket
+    client_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
 
-        else:
-            self.socket.close()
+    try:
+        # Connect to the server
+        client_socket.connect((host, port))
+        print(f"Connected to the auction server at {host}:{port}")
 
-    def start_auction(self):
-        print('in start aution')
-        auction_type = input("Enter 1 for first-price auction, or 2 for second-price auction: ")
-        lowest_price = input("Enter the lowest price you are willing to sell for: ")
-        number_of_bids = input("Enter the number of bids you are willing to accept: ")
-        item_name = input("Enter the name of the item to be sold: ")
+        # Determine if the client is a seller or bidder
+        role = client_socket.recv(1024).decode()
+        print(role)
+        if role == 'seller':
+            # Seller submits auction details
+            auction_type = input("Enter the type of auction: ")
+            min_price = input("Enter the minimum price: ")
+            num_bidders = input("Enter the number of bidders: ")
+            item_name = input("Enter the item name: ")
 
-        self.socket.send(("START AUCTION {} {} {} {}".format(auction_type, lowest_price, number_of_bids, item_name)).encode())
+            # Send auction details to the server
+            auction_details = f"{auction_type},{min_price},{num_bidders},{item_name}"
+            client_socket.sendall(auction_details.encode())
+        elif role == 'bidder':
+            # Receive auction details from the server
+            auction_details = client_socket.recv(1024).decode().split(',')
+            auction_type, min_price, num_bidders, item_name = auction_details
 
-        data = self.socket.recv(1024).decode()
-        print(data)
+            print("Auction Details:")
+            print(f"Type: {auction_type}")
+            print(f"Minimum Price: {min_price}")
+            print(f"Number of Bidders: {num_bidders}")
+            print(f"Item Name: {item_name}")
 
-        if data.startswith("Auction request received"):
-            data = self.socket.recv(1024).decode()
-            print(data)
+            # Bidder submits a bid
+            bid = input("Enter your bid: ")
+            client_socket.sendall(bid.encode())
 
-            if data.startswith("Bidding start"):
-                while True:
-                    try:
-                        data = self.socket.recv(1024).decode()
-                        print(data)
-                    except Exception as e:
-                        print('Error:', e)
-                        break
+            # Receive acknowledgment from the server
+            acknowledgment = client_socket.recv(1024).decode()
+            print(f"Acknowledgment from server: {acknowledgment}")
 
-    def bid(self):
-        bid = input("Enter your bid: ")
-
-        self.socket.send(("BID {}".format(bid)).encode())
-
-        data = self.socket.recv(1024).decode()
-        print(data)
-
-        if data.startswith("Bid received"):
-            while True:
-                try:
-                    data = self.socket.recv(1024).decode()
-                    print(data)
-                except Exception as e:
-                    print('Error:', e)
-                    break
-
+    except Exception as e:
+        print(f"Error: {e}")
+    finally:
+        # Close the socket
+        client_socket.close()
 
 if __name__ == "__main__":
-    
-    if len(sys.argv) != 3:
-        print("Usage: python3 {} <server_ip> <server_port>".format(sys.argv[0]))
-        exit()
-
-    server_ip = sys.argv[1]
-    server_port = int(sys.argv[2])
-
-    client = Client(server_ip, server_port)
-    client.start()
+    start_client()
