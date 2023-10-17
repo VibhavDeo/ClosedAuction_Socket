@@ -1,4 +1,6 @@
-# Author: Vibhav Sunil Deo [vdeo]
+# auc_client.py
+# Author: Vibhav Sunil Deo
+# ID: 200537706
 # UnityID: vdeo
 # Date: 10/12/2023
 # v2

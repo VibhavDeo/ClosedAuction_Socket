@@ -1,4 +1,9 @@
-# Vibhav Sunil Deo [vdeo]
+# auc_server.py
+# Author: Vibhav Sunil Deo
+# ID: 200537706
+# UnityID: vdeo
+# Date: 10/12/2023
+# v2
 
 import socket
 import threading
@@ -21,14 +26,11 @@ class Auctioneer:
         self.auctioneer_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
         self.auctioneer_socket.bind((self.HOST, self.PORT))
         self.auctioneer_socket.listen()
-        self.exit_event = threading.Event()
 
     def listen(self):
         print("Auctioneer is ready for hosting auctions on PORT:", self.PORT)
-        while not self.exit_event.is_set():
-        #while True:
+        while True:
             if self.status != 4 or self.status != 5:
-                print(self.status)
                 client_socket, client_address = self.auctioneer_socket.accept()
                 client_socket.send("Connected to the Auctioneer server".encode())
                     
@@ -58,10 +60,7 @@ class Auctioneer:
                     print(">> New bidding thread spawned")
                 elif len(self.buyers_list) > self.auction_details['number_of_bids'] and len(self.buyers_list)!=0:
                     client_socket.send("Server is busy. Try to connect again later.".encode())
-                        
-        self.seller_socket.close()
-        self.auctioneer_socket.close()
-        print('self.auctioneer_socket.close()')
+                
                 
     def handle_seller(self,client_socket):
         # Request the seller to submit an auction request.
@@ -195,7 +194,8 @@ class Auctioneer:
             print("Item Sold! The highest bid is $",self.payment[0],".")
         elif self.auction_details['type_of_auction'] == 2:
             print("Item Sold! The highest bid is $",self.payment[0],".The actual bid is $",self.payment[1])
-        self.exit_event.set()
+        
+        self.seller_socket.close()
         
 if __name__ == '__main__':
     auction = Auctioneer()
