@@ -3,7 +3,6 @@
 # ID: 200537706
 # UnityID: vdeo
 # Date: 10/12/2023
-# v2
 
 import socket
 import threading
