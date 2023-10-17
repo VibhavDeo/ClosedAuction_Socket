@@ -22,8 +22,6 @@ class Auctioneer:
         self.auctioneer_socket.bind((self.HOST, self.PORT))
         self.auctioneer_socket.listen()
         self.exit_event = threading.Event()
-        #print("Auctioneer is ready for hosting auctions on PORT:", self.PORT)
-        #self.listen()
 
     def listen(self):
         print("Auctioneer is ready for hosting auctions on PORT:", self.PORT)
@@ -64,12 +62,6 @@ class Auctioneer:
         self.seller_socket.close()
         self.auctioneer_socket.close()
         print('self.auctioneer_socket.close()')
-                #elif self.status == 5:
-                #    if self.auction_details['type_of_auction'] == 1:
-                #        print("Item Sold! The highest bid is $",self.payment[0],".")
-                #    elif self.auction_details['type_of_auction'] == 2:
-                #        print("Item Sold! The highest bid is $",self.payment[0],".The actual bid is $",self.payment[1])
-                #    break
                 
     def handle_seller(self,client_socket):
         # Request the seller to submit an auction request.
