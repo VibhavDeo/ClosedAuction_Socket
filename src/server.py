@@ -14,14 +14,9 @@ class Auctioneer:
     def __init__(self):
         self.status = 0  # 0 = waiting for seller, 1 = waiting for request from seller, 2 = waiting for buyers, 4 = auction over
         self.buyers_list = []
-        self.auction_details = {
-                'type_of_auction': 0,
-                'lowest_price': 0,
-                'number_of_bids': 0,
-                'item_name': ""
-            }
+        self.auction_details = {'type_of_auction': 0,'lowest_price': 0,'number_of_bids': 0,'item_name': ""}
         self.payment = []
-        self.HOST = 'localhost'
+        self.HOST = '127.0.0.1'
         self.PORT = int(sys.argv[1])
         self.auctioneer_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
         self.auctioneer_socket.bind((self.HOST, self.PORT))
@@ -30,36 +25,43 @@ class Auctioneer:
     def listen(self):
         print("Auctioneer is ready for hosting auctions on PORT:", self.PORT)
         while True:
-            if self.status != 4 or self.status != 5:
+            if self.status != 4:
+                print(self.status)
                 client_socket, client_address = self.auctioneer_socket.accept()
                 client_socket.send("Connected to the Auctioneer server".encode())
-                    
+
+                #case to add first client as seller
                 if self.status == 0:
-                    # If WAITING_FOR_SELLER = 1 the first client will be the seller on a new thread
                     self.status = 1
                     self.seller_socket, self.seller_address = client_socket, client_address
-                    print('Seller connected from '+ str(self.seller_address))
+                    print('Seller connected from '+ str(self.seller_address[0])+':'+ str(self.seller_address[1]))
                     threading.Thread(target=self.handle_seller,
-                                    args=(self.seller_socket,)).start()    
+                                    args=(self.seller_socket,)).start()
+
+                #case to handle new client joining when seller is connected but bidding has not started yet
                 elif self.status == 1 and len(self.buyers_list) == 0:
                     client_socket.send("Server is busy. Try to connect again later.".encode())
                     continue
-                
+
+                #case to handle new bidders joining after max bidders reached
+                if self.status==5:
+                    client_socket.send("Server is busy. Try to connect again later.".encode())
+                    continue
+
+                #case to handle adding new bidders until buyers number is reached
                 if len(self.buyers_list) < self.auction_details['number_of_bids']:
-                    # Else accept connections for the buyer
                     self.buyers_list.append(client_socket)
                     threading.Thread(target=self.handle_buyer,
                                     args=(client_socket,)).start()
-                    print(f'Buyer {len(self.buyers_list)} is connected from '+ str(client_address))
+                    print(f'Buyer {len(self.buyers_list)} is connected from '+ str(self.seller_address[0])+':'+ str(self.seller_address[1]))
 
+                #case to start auction after all bidders have joined
                 if len(self.buyers_list) == self.auction_details['number_of_bids'] and len(self.buyers_list)!=0:
                     print('Requested number of bidders arrived. Let\'s start bidding!')
-                    self.status = 4
                     threading.Thread(target=self.handle_auction,
                                     args=()).start()
                     print(">> New bidding thread spawned")
-                elif len(self.buyers_list) > self.auction_details['number_of_bids'] and len(self.buyers_list)!=0:
-                    client_socket.send("Server is busy. Try to connect again later.".encode())
+                    self.status=5
                 
                 
     def handle_seller(self,client_socket):
@@ -116,7 +118,7 @@ class Auctioneer:
             while True:
                 try:
                     bid = int(buyer.recv(1024).decode())
-                    if bid < 1:
+                    if bid < 1 or bid <self.auction_details['lowest_price']:
                         raise ValueError
                     break
                 except:
@@ -124,7 +126,7 @@ class Auctioneer:
                 
             # Storing the bid and the bidder in a dictionary
             bids[buyer] = bid
-            print(f"buyer {i+1} bid: {bid}")
+            print(f"buyer {i+1} bid ${bid}")
             # Informing the Buyer that the bid has been received
             buyer.send('Server: Bid received. Please wait...'.encode())
 
@@ -195,6 +197,7 @@ class Auctioneer:
         elif self.auction_details['type_of_auction'] == 2:
             print("Item Sold! The highest bid is $",self.payment[0],".The actual bid is $",self.payment[1])
         
+        self.status = 4 #!!!!!!!!!
         self.seller_socket.close()
         
 if __name__ == '__main__':

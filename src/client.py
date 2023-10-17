@@ -65,6 +65,7 @@ class AuctionClient:
     def buyer(self):
         #Server sends the response that you are the bidder
         #Stays in loop until all buyers are connected
+        flag=0
         while True:
             auctioneer_response = self.client_socket.recv(1024).decode()
             print(auctioneer_response)
@@ -72,19 +73,26 @@ class AuctionClient:
             #Auction starts when all the buyers have joined the server
             if "The bidding has started!" in auctioneer_response:
                 break
-
-        #server accepts the bid from buyer and waits until all the buyers bid
-        while True:
-            bidding_offer = input()
-            self.client_socket.send(str(bidding_offer).encode())
-            auctioneer_response = self.client_socket.recv(1024).decode()
-            #waits until bids from all buyers are recieved
-            if "Server: Bid received. Please wait..." in auctioneer_response:
+            #Case to handle incoming bidders after the auction gets full
+            elif "Server is busy. Try to connect again later." in auctioneer_response:
+                flag=1
                 break
+        if flag==0:
+            #server accepts the bid from buyer and waits until all the buyers bid
+            while True:
+                bidding_offer = input()
+                self.client_socket.send(str(bidding_offer).encode())
+                auctioneer_response = self.client_socket.recv(1024).decode()
+                #waits until bids from all buyers are recieved
+                if "Server: Bid received. Please wait..." in auctioneer_response:
+                    break
+                else:
+                    print(auctioneer_response)
+                    print('Please submit your bid:')
 
-        #server sends the result of the auction
-        auctioneer_response = self.client_socket.recv(1024).decode()
-        print(auctioneer_response)
+            #server sends the result of the auction
+            auctioneer_response = self.client_socket.recv(1024).decode()
+            print(auctioneer_response)
 
     def close_connection(self):
         #closing the socket
