@@ -1,3 +1,4 @@
+"""This file handles the seller and bidders involved in auction"""
 # auc_client.py
 # Author: Vibhav Sunil Deo
 # ID: 200537706
@@ -7,7 +8,10 @@
 import socket
 import sys
 
+"""Auction class"""
 class AuctionClient:
+
+    """Initialize class variables"""
     def __init__(self, host, port):
         # create IPv4 socket for connecting with server
         self.host = host
@@ -15,6 +19,7 @@ class AuctionClient:
         self.client_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
         self.role = None
 
+    """Server connection"""
     def connect_to_server(self):
         #Connecting to the input IP and port
         self.client_socket.connect((self.host, self.port))
@@ -23,7 +28,8 @@ class AuctionClient:
         resp = self.client_socket.recv(1024).decode()
         print(resp)
 
-        #Using the server response to see if there is an auction running with one seller and required number of bidders
+        #Using the server response to see if there is an 
+        #auction running with one seller and required number of bidders
         resp = self.client_socket.recv(1024).decode()
         if "Server is busy. Try to connect again later." in resp:
             print(resp)
@@ -34,6 +40,7 @@ class AuctionClient:
         self.role = resp
         print(f"Your role is: [{self.role}]")
 
+    """Executes buyer or seller method depending upon the client type"""
     def start(self):
         #Executing buyer/seller
         if self.role == 'seller':
@@ -41,12 +48,14 @@ class AuctionClient:
         elif self.role == 'buyer':
             self.buyer()
 
+    """Seller implementation"""
     def seller(self):
         #Server requests for item details from seller
         resp = self.client_socket.recv(1024).decode()
         print(resp)
 
-        #sending auction request to the server. If invalid request is sent, client asks for new item information
+        #sending auction request to the server. 
+        #If invalid request is sent, client asks for new item information
         while True:
             bidding_information = input()
             self.client_socket.send(bidding_information.encode())
@@ -61,6 +70,7 @@ class AuctionClient:
         auctioneer_response = self.client_socket.recv(1024).decode()
         print(auctioneer_response)
 
+    """Buer implementation"""
     def buyer(self):
         #Server sends the response that you are the bidder
         #Stays in loop until all buyers are connected
@@ -97,6 +107,7 @@ class AuctionClient:
         #closing the socket
         self.client_socket.close()
 
+"""Main function"""
 def main():
     # If the code is given wrong inputs while running exit the code asking for the right inputs
     if len(sys.argv) != 3:
