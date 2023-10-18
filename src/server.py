@@ -8,7 +8,7 @@ import socket
 import threading
 import sys
 
-class CustomAuctioneer:
+class AuctionServer:
 
     def __init__(self):
         self.server_ip = '127.0.0.1'
@@ -19,7 +19,10 @@ class CustomAuctioneer:
         self.auction_status = 0
         self.round_reset_flag = 0
         self.bidders = []
-        self.auction_info = {'auction_type': 0, 'minimum_price': 0, 'num_bids': 0, 'item_name': ""}
+        self.auction_type = 0
+        self.minimum_price = 0
+        self.num_bids = 0
+        self.item_name = ""
         self.payments = []
 
     def start_listening(self):
@@ -46,12 +49,12 @@ class CustomAuctioneer:
                     client_socket.send("Server is busy. Try to connect again later. Bidding in progress".encode())
                     continue
 
-                if len(self.bidders) < self.auction_info['num_bids']:
+                if len(self.bidders) < self.num_bids:
                     self.bidders.append(client_socket)
                     threading.Thread(target=self.handle_bidder,args=(client_socket,)).start()
                     print(f'Buyer {len(self.bidders)} is connected from ' + str(self.seller_address[0]) + ':' + str(self.seller_address[1]))
 
-                if len(self.bidders) == self.auction_info['num_bids'] and len(self.bidders) != 0:
+                if len(self.bidders) == self.num_bids and len(self.bidders) != 0:
                     print('Requested number of bidders arrived. Let\'s start bidding!')
                     threading.Thread(target=self.handle_auction,args=()).start()
                     print(">> New bidding thread spawned")
@@ -66,18 +69,11 @@ class CustomAuctioneer:
         while True:
             try:
                 auction_request = seller_socket.recv(1024).decode()
-                auction_type, minimum_price, num_bids, item_name = auction_request.split()
-                auction_type, minimum_price, num_bids = int(auction_type), int(minimum_price), int(num_bids)
+                self.auction_type, self.minimum_price, self.num_bids, self.item_name = auction_request.split()
+                self.auction_type, self.minimum_price, self.num_bids = int(self.auction_type), int(self.minimum_price), int(self.num_bids)
 
-                if auction_type not in [1, 2]:
+                if self.auction_type not in [1, 2]:
                     raise ValueError
-
-                self.auction_info = {
-                    'auction_type': auction_type,
-                    'minimum_price': minimum_price,
-                    'num_bids': num_bids,
-                    'item_name': item_name
-                }
 
                 seller_socket.send("Server: Auction Start".encode())
                 print("Auction request received. Now waiting for buyers...")
@@ -89,7 +85,7 @@ class CustomAuctioneer:
 
     def handle_bidder(self, bidder_socket):
         bidder_socket.send('buyer'.encode())
-        if len(self.bidders) < self.auction_info['num_bids']:
+        if len(self.bidders) < self.num_bids:
             bidder_socket.send('The auctioneer is still waiting for other buyers to connect...'.encode())
 
     def handle_auction(self):
@@ -115,39 +111,62 @@ class CustomAuctioneer:
         highest_bidder = max(bids, key=bids.get)
         highest_bid = bids[highest_bidder]
 
-        if highest_bid < self.auction_info['minimum_price']:
+        if highest_bid < self.minimum_price:
             unsold_flag = 1
             self.handle_unsuccessful_auction()
 
         else:
-            self.handle_successful_auction(highest_bidder, highest_bid)
+            self.handle_successful_auction(highest_bidder, highest_bid, bids)
+            highest_bidder.close()
 
         if unsold_flag == 0:
-            if self.auction_info['auction_type'] == 1:
+            if self.auction_type == 1:
                 print("Item Sold! The highest bid is $", self.payments[0], ".")
-            elif self.auction_info['auction_type'] == 2:
+            elif self.auction_type == 2:
                 print("Item Sold! The highest bid is $", self.payments[0], ". The actual bid is $", self.payments[1])
 
         self.round_reset_flag = 1
         self.seller_socket.close()
         print("Auctioneer is ready to host auctions!")
 
-    def handle_successful_auction(self, highest_bidder, highest_bid):
-        self.seller_socket.send(
-            (f'Auction Finished!\nYour item {self.auction_info["item_name"]} has been sold for ${highest_bid}.\n'
-             f'Disconnecting from the Auctioneer server. Auction is over!').encode())
+    def handle_successful_auction(self, highest_bidder, highest_bid, bids):
+        if self.auction_type==1:
+            self.seller_socket.send(
+                (f'Auction Finished!\nYour item {self.item_name} has been sold for ${highest_bid}.\n'
+                 f'Disconnecting from the Auctioneer server. Auction is over!').encode())
 
-        highest_bidder.send(
-            (f'Auction Finished!\nYou won the item {self.auction_info["item_name"]}. Your payment due is ${highest_bid}.\n'
-             f'Disconnecting from the Auctioneer server. Auction is over!').encode())
+            highest_bidder.send(
+                (f'Auction Finished!\nYou won the item {self.item_name}. Your payment due is ${highest_bid}.\n'
+                 f'Disconnecting from the Auctioneer server. Auction is over!').encode())
 
-        for buyer in self.bidders:
-            if buyer != highest_bidder:
-                buyer.send(
-                    (f'Auction Finished!\nUnfortunately you did not win the last round.\n'
-                     f'Disconnecting from the Auctioneer server. Auction is Over!').encode())
-                buyer.close()
-        self.payments = [highest_bid]
+            for buyer in self.bidders:
+                if buyer != highest_bidder:
+                    buyer.send(
+                        (f'Auction Finished!\nUnfortunately you did not win the last round.\n'
+                         f'Disconnecting from the Auctioneer server. Auction is Over!').encode())
+                    buyer.close()
+            self.payments = [highest_bid]
+        if self.auction_type==2:
+        
+            del bids[highest_bidder]
+
+            second_highest_bidder = max(bids, key=bids.get)
+            second_highest_bid = bids[second_highest_bidder]
+            self.seller_socket.send(
+                (f'Auction Finished!\nYour item {self.item_name} has been sold for ${second_highest_bid}.\n'
+                 f'Disconnecting from the Auctioneer server. Auction is over!').encode())
+
+            highest_bidder.send(
+                (f'Auction Finished!\nYou won the item {self.item_name}. Your payment due is ${second_highest_bid}.\n'
+                 f'Disconnecting from the Auctioneer server. Auction is over!').encode())
+
+            for buyer in self.bidders:
+                if buyer != highest_bidder:
+                    buyer.send(
+                        (f'Auction Finished!\nUnfortunately you did not win the last round.\n'
+                         f'Disconnecting from the Auctioneer server. Auction is Over!').encode())
+                    buyer.close()
+            self.payments = [highest_bid,second_highest_bid]
 
     def handle_unsuccessful_auction(self):
         self.seller_socket.send('Unfortunately, the item was not sold.'.encode())
@@ -161,9 +180,12 @@ class CustomAuctioneer:
         self.auction_status = 0
         self.round_reset_flag = 0
         self.bidders = []
-        self.auction_info = {'auction_type': 0, 'minimum_price': 0, 'num_bids': 0, 'item_name': ""}
+        self.auction_type = 0
+        self.minimum_price = 0
+        self.num_bids = 0
+        self.item_name = ""
         self.payments = []
 
 if __name__ == '__main__':
-    auction = CustomAuctioneer()
+    auction = AuctionServer()
     auction.start_listening()
