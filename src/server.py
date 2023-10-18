@@ -1,13 +1,16 @@
-"""This file handles the auctioneer"""
-# auc_server.py
-# Author: Vibhav Sunil Deo
-# ID: 200537706
-# UnityID: vdeo
-# Date: 10/12/2023
+"""
+@Author: Vibhav Sunil Deo
+@Date: 10/12/2023
+
+auc_server.py: This file handles the auctioneer
+
+Usage: python3 auc_server.py <PORT>
+"""
 
 import socket
 import threading
 import sys
+import time
 
 """Auctioneer class"""
 class AuctionServer:
@@ -15,7 +18,9 @@ class AuctionServer:
     """Initialize class variables"""
     def __init__(self):
         #initializing variables
+        #self.server_ip = socket.gethostbyname(socket.gethostname())
         self.server_ip = '127.0.0.1'
+
         self.server_port = int(sys.argv[1])
         self.auction_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
         self.auction_socket.bind((self.server_ip, self.server_port))
@@ -47,21 +52,15 @@ class AuctionServer:
         if self.auction_type==1:
             
             #send auction result to seller
-            self.seller_socket.send(
-                (f'Auction Finished!\nYour item {self.item_name} has been sold for ${highest_bid}.\n'
-                 f'Disconnecting from the Auctioneer server. Auction is over!').encode())
+            self.seller_socket.send(('Auction Finished!\nYour item '+str(self.item_name)+' has been sold for $'+str(highest_bid)+'.\nDisconnecting from the Auctioneer server. Auction is over!').encode())
 
             #send auction result to auction winner
-            highest_bidder.send(
-                (f'Auction Finished!\nYou won the item {self.item_name}. Your payment due is ${highest_bid}.\n'
-                 f'Disconnecting from the Auctioneer server. Auction is over!').encode())
+            highest_bidder.send(('Auction Finished!\nYou won the item '+str(self.item_name)+' Your payment due is $'+str(highest_bid)+'.\nDisconnecting from the Auctioneer server. Auction is over!').encode())
 
             #send auction result to other bidders
             for buyer in self.bidders:
                 if buyer != highest_bidder:
-                    buyer.send(
-                        (f'Auction Finished!\nUnfortunately you did not win the last round.\n'
-                         f'Disconnecting from the Auctioneer server. Auction is Over!').encode())
+                    buyer.send(('Auction Finished!\nUnfortunately you did not win the last round.\nDisconnecting from the Auctioneer server. Auction is Over!').encode())
                     buyer.close()
             self.payments = [highest_bid]
 
@@ -74,21 +73,15 @@ class AuctionServer:
             second_highest_bid = bids[second_highest_bidder]
 
             #send auction result to seller
-            self.seller_socket.send(
-                (f'Auction Finished!\nYour item {self.item_name} has been sold for ${second_highest_bid}.\n'
-                 f'Disconnecting from the Auctioneer server. Auction is over!').encode())
+            self.seller_socket.send(('Auction Finished!\nYour item '+str(self.item_name)+' has been sold for $'+str(second_highest_bid)+'.\nDisconnecting from the Auctioneer server. Auction is over!').encode())
 
             #send auction result to highest bidder
-            highest_bidder.send(
-                (f'Auction Finished!\nYou won the item {self.item_name}. Your payment due is ${second_highest_bid}.\n'
-                 f'Disconnecting from the Auctioneer server. Auction is over!').encode())
+            highest_bidder.send(('Auction Finished!\nYou won the item '+str(self.item_name)+'. Your payment due is $'+str(second_highest_bid)+'.\nDisconnecting from the Auctioneer server. Auction is over!').encode())
 
             #send auction result to other bidders
             for buyer in self.bidders:
                 if buyer != highest_bidder:
-                    buyer.send(
-                        (f'Auction Finished!\nUnfortunately you did not win the last round.\n'
-                         f'Disconnecting from the Auctioneer server. Auction is Over!').encode())
+                    buyer.send(('Auction Finished!\nUnfortunately you did not win the last round.\nDisconnecting from the Auctioneer server. Auction is Over!').encode())
                     buyer.close()
             self.payments = [highest_bid,second_highest_bid]
 
@@ -140,7 +133,7 @@ class AuctionServer:
             if len(self.bidders) < self.num_bids:
                 self.bidders.append(client_socket)
                 threading.Thread(target=self.handle_bidder,args=(client_socket,)).start()
-                print(f'Buyer {len(self.bidders)} is connected from ' + str(self.seller_address[0]) + ':' + str(self.seller_address[1]))
+                print('Buyer '+str(len(self.bidders))+' is connected from ' + str(self.seller_address[0]) + ':' + str(self.seller_address[1]))
 
             #case to start auction after all bidders have joined
             if len(self.bidders) == self.num_bids and len(self.bidders) != 0:
@@ -182,13 +175,14 @@ class AuctionServer:
         bidder_socket.send('buyer'.encode())
 
         #sending message to existing bidders to wait for others to connect
-        if len(self.bidders) < self.num_bids:
+        if len(self.bidders) <= self.num_bids:
             bidder_socket.send('The auctioneer is still waiting for other buyers to connect...'.encode())
 
     """This method handle bids from the connected bidders in the ongoing auction"""
     def handle_bids(self,bids):
         #Fetch bids from all the buyers
         for i, bidder in enumerate(self.bidders):
+            time.sleep(2)
             bidder.send('The bidding has started!\nPlease submit your bid:'.encode())
 
             #fetching bid amount from buyers until valid bid is obtained
@@ -202,7 +196,7 @@ class AuctionServer:
                     bidder.send('Server: Invalid bid. Please submit a positive integer!'.encode())
 
             bids[bidder] = bid
-            print(f"Buyer {i + 1} bid ${bid}")
+            print('Buyer '+str(i + 1)+' bid $'+str(bid))
             bidder.send('Server: Bid received. Please wait...'.encode())
 
     """This method handles auction process, determining if the item is sold and finding the winner"""

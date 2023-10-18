@@ -1,9 +1,11 @@
-"""This file handles the seller and bidders involved in auction"""
-# auc_client.py
-# Author: Vibhav Sunil Deo
-# ID: 200537706
-# UnityID: vdeo
-# Date: 10/12/2023
+"""
+@Author: Vibhav Deo
+@Date: 10/12/2023
+
+auc_client.py: This file handles the seller and bidders involved in auction
+
+Usage: python3 auc_client.py <SERVER_IP> <PORT>
+"""
 
 import socket
 import sys
@@ -70,7 +72,7 @@ class AuctionClient:
         auctioneer_response = self.client_socket.recv(1024).decode()
         print(auctioneer_response)
 
-    """Buer implementation"""
+    """Buyer implementation"""
     def buyer(self):
         #Server sends the response that you are the bidder
         #Stays in loop until all buyers are connected
@@ -94,14 +96,15 @@ class AuctionClient:
                 auctioneer_response = self.client_socket.recv(1024).decode()
                 #waits until bids from all buyers are recieved
                 if "Server: Bid received. Please wait..." in auctioneer_response:
+                    print(auctioneer_response)
                     break
                 else:
                     print(auctioneer_response)
                     print('Please submit your bid:')
 
-            #server sends the result of the auction
-            auctioneer_response = self.client_socket.recv(1024).decode()
-            print(auctioneer_response)
+        #server sends the result of the auction
+        auctioneer_response = self.client_socket.recv(1024).decode()
+        print(auctioneer_response)
 
     def close_connection(self):
         #closing the socket
