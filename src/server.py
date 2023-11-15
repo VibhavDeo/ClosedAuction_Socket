@@ -47,7 +47,7 @@ class AuctionServer:
         self.payments = []
 
     """Method to handle communication for successful auction. (max bid price >= minimum_price)"""
-    def handle_successful_auction(self, highest_bidder, highest_bid, bids):
+    def handle_successful_auction(self, highest_bidder, highest_bid, bids, minimum_price):
         #for auction type =1 ; first-price
         if self.auction_type==1:
             
@@ -71,6 +71,10 @@ class AuctionServer:
             del bids[highest_bidder]
             second_highest_bidder = max(bids, key=bids.get)
             second_highest_bid = bids[second_highest_bidder]
+
+            #Case to handle the minimum selling price of the item
+            if minimum_price>second_highest_bid:
+                second_highest_bid=minimum_price
 
             #send auction result to seller
             self.seller_socket.send(('Auction Finished!\nYour item '+str(self.item_name)+' has been sold for $'+str(second_highest_bid)+'.\nDisconnecting from the Auctioneer server. Auction is over!').encode())
@@ -217,7 +221,7 @@ class AuctionServer:
 
         #mthod to handle the auction when item gets sold
         else:
-            self.handle_successful_auction(highest_bidder, highest_bid, bids)
+            self.handle_successful_auction(highest_bidder, highest_bid, bids,self.minimum_price)
             highest_bidder.close()
 
         #when item gets sold, display the result
