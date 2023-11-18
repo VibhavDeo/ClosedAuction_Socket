@@ -137,7 +137,7 @@ class AuctionServer:
             if len(self.bidders) < self.num_bids:
                 self.bidders.append(client_socket)
                 threading.Thread(target=self.handle_bidder,args=(client_socket,)).start()
-                print('Buyer '+str(len(self.bidders))+' is connected from ' + str(self.seller_address[0]) + ':' + str(self.seller_address[1]))
+                print('Buyer '+str(len(self.bidders))+' is connected from ' + str(client_address[0]) + ':' + str(client_address[1]))
 
             #case to start auction after all bidders have joined
             if len(self.bidders) == self.num_bids and len(self.bidders) != 0:
@@ -222,6 +222,7 @@ class AuctionServer:
         #mthod to handle the auction when item gets sold
         else:
             self.handle_successful_auction(highest_bidder, highest_bid, bids,self.minimum_price)
+            print("TEST_HIGHEST_BIDDER:",highest_bidder.getpeername())
             highest_bidder.close()
 
         #when item gets sold, display the result
@@ -233,6 +234,7 @@ class AuctionServer:
 
         #set reset flag to 1 to indicate that the  auction is over and close seller socket
         self.round_reset_flag = 1
+        print("TEST_SELLER:",self.seller_socket.getpeername())
         self.seller_socket.close()
 
         print("Auctioneer is ready to host auctions!")
